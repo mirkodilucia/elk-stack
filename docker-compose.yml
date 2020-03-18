@@ -1,0 +1,71 @@
+version: '3.7'
+services:
+####################################################################################################
+# Search Engine Stack
+####################################################################################################
+  elsearch:
+    container_name: ${ELASTICSEARCH_NAME}
+    build:
+      context: ./elasticsearch
+      dockerfile: ./Dockerfile
+      args:
+        - TAG=${ELASTICSEARCH_TAG}
+    environment:
+      - node.name=es01
+      - cluster.name=docker-cluster
+      - cluster.initial_master_nodes=es01
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    expose:
+      - "9200"
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    networks:
+      - net_elastic
+
+  kibana:
+    container_name: ${KIBANA_NAME}
+    build:
+      context: ./kibana
+      dockerfile: ./Dockerfile
+      args:
+        - TAG=${KIBANA_TAG}
+    expose:
+      - "5601"
+    networks:
+      - net_elastic
+    depends_on:
+      - elsearch
+
+####################################################################################################
+# The Web Server
+####################################################################################################
+  webserver:
+    container_name: ${WEBSERVER_NAME}
+    build:
+      context: ./webserver
+      dockerfile: Dockerfile
+      args:
+        - TAG=${WEBSERVER_TAG}
+    ports:
+      - "8882:8882"
+    volumes:
+      - data:/var/www
+    working_dir: /var/www
+    networks:
+      - net_webserver
+      - net_elastic
+    depends_on:
+      - elsearch
+
+networks:
+  net_webserver: {}
+  net_elastic: {}
+
+volumes:
+  data: {}
